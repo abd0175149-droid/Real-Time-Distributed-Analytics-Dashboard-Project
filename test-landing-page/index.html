@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحة اختبار نظام التتبع - Analytics Test Landing Page</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- شريط التتبع المباشر -->
+    <div id="tracking-panel" class="tracking-panel">
+        <div class="panel-header">
+            <h3>🔴 البيانات المجمعة مباشرة</h3>
+            <button id="toggle-panel" class="toggle-btn">تصغير</button>
+        </div>
+        <div class="panel-content">
+            <div class="status-bar">
+                <span id="connection-status" class="status disconnected">غير متصل</span>
+                <span id="events-count">الأحداث: 0</span>
+            </div>
+            <div id="events-log" class="events-log"></div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1>📊 Analytics Demo</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">المميزات</a></li>
+                <li><a href="#products">المنتجات</a></li>
+                <li><a href="#contact">تواصل معنا</a></li>
+                <li><a href="https://github.com" target="_blank">GitHub ↗</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>صفحة اختبار نظام التتبع</h1>
+            <p>هذه الصفحة مصممة لاختبار جميع أنواع الأحداث التي يجمعها نظام التتبع</p>
+            <div class="hero-buttons">
+                <button id="cta-primary" class="btn btn-primary">ابدأ الآن</button>
+                <button id="cta-secondary" class="btn btn-secondary">اعرف المزيد</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Data Collection Info -->
+    <section id="data-info" class="section data-info">
+        <h2>📋 البيانات التي نجمعها</h2>
+        
+        <!-- Events Checklist -->
+        <div class="events-checklist" style="background: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+            <h3>✅ أنواع الأحداث المدعومة (18 نوع)</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                <span class="event-badge">📄 page_load</span>
+                <span class="event-badge">👁️ page_view</span>
+                <span class="event-badge">📜 scroll_depth</span>
+                <span class="event-badge">🖱️ mouse_click</span>
+                <span class="event-badge">🔘 button_click</span>
+                <span class="event-badge">🔗 link_click</span>
+                <span class="event-badge">📥 file_download</span>
+                <span class="event-badge">📝 form_submit</span>
+                <span class="event-badge">✏️ form_focus</span>
+                <span class="event-badge">⌨️ form_input</span>
+                <span class="event-badge">▶️ video_play</span>
+                <span class="event-badge">⏸️ video_pause</span>
+                <span class="event-badge">✓ video_complete</span>
+                <span class="event-badge">👁️‍🗨️ page_visibility</span>
+                <span class="event-badge">🚪 page_unload</span>
+                <span class="event-badge">🛒 ecommerce</span>
+                <span class="event-badge">⚡ custom_event</span>
+                <span class="event-badge">📦 periodic_batch</span>
+            </div>
+        </div>
+
+        <div class="data-grid">
+            <div class="data-card">
+                <h3>🖥️ معلومات الجهاز</h3>
+                <ul id="device-info">
+                    <li>نوع الجهاز: <span class="value">جاري التحميل...</span></li>
+                    <li>نظام التشغيل: <span class="value">-</span></li>
+                    <li>المتصفح: <span class="value">-</span></li>
+                    <li>دقة الشاشة: <span class="value">-</span></li>
+                    <li>حجم النافذة: <span class="value">-</span></li>
+                </ul>
+            </div>
+            <div class="data-card">
+                <h3>🌍 الموقع الجغرافي</h3>
+                <ul id="geo-info">
+                    <li>الدولة: <span class="value">جاري التحميل...</span></li>
+                    <li>المدينة: <span class="value">-</span></li>
+                    <li>المنطقة: <span class="value">-</span></li>
+                    <li>IP: <span class="value">-</span></li>
+                </ul>
+            </div>
+            <div class="data-card">
+                <h3>📶 معلومات الشبكة</h3>
+                <ul id="network-info">
+                    <li>نوع الاتصال: <span class="value">جاري التحميل...</span></li>
+                    <li>سرعة التحميل: <span class="value">-</span></li>
+                    <li>RTT: <span class="value">-</span></li>
+                    <li>توفير البيانات: <span class="value">-</span></li>
+                </ul>
+            </div>
+            <div class="data-card">
+                <h3>⚡ أداء الصفحة</h3>
+                <ul id="performance-info">
+                    <li>وقت تحميل الصفحة: <span class="value">جاري التحميل...</span></li>
+                    <li>وقت DNS: <span class="value">-</span></li>
+                    <li>وقت الاتصال: <span class="value">-</span></li>
+                    <li>وقت DOM: <span class="value">-</span></li>
+                </ul>
+            </div>
+            <div class="data-card">
+                <h3>🔗 معلومات الجلسة</h3>
+                <ul id="session-info">
+                    <li>Session ID: <span class="value">-</span></li>
+                    <li>User ID: <span class="value">-</span></li>
+                    <li>Tracking ID: <span class="value">-</span></li>
+                    <li>مصدر الزيارة: <span class="value">-</span></li>
+                </ul>
+            </div>
+            <div class="data-card">
+                <h3>📊 إحصائيات التفاعل</h3>
+                <ul id="interaction-stats">
+                    <li>عدد النقرات: <span class="value" id="click-count">0</span></li>
+                    <li>عمق التمرير: <span class="value" id="scroll-depth">0%</span></li>
+                    <li>وقت البقاء: <span class="value" id="time-on-page">0 ثانية</span></li>
+                    <li>حركات الماوس: <span class="value" id="mouse-moves">0</span></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Buttons Section -->
+    <section id="features" class="section">
+        <h2>🖱️ اختبار النقرات على الأزرار</h2>
+        <div class="buttons-grid">
+            <button id="btn-1" class="btn btn-primary">زر رئيسي</button>
+            <button id="btn-2" class="btn btn-secondary">زر ثانوي</button>
+            <button id="btn-3" class="btn btn-success">زر نجاح</button>
+            <button id="btn-4" class="btn btn-danger">زر خطر</button>
+            <button id="btn-5" class="btn btn-warning">زر تحذير</button>
+            <button id="btn-6" class="btn btn-info">زر معلومات</button>
+        </div>
+    </section>
+
+    <!-- Links Section -->
+    <section class="section links-section">
+        <h2>🔗 اختبار النقرات على الروابط</h2>
+        <div class="links-grid">
+            <a href="#internal-1" class="link internal" data-link-type="internal">رابط داخلي 1</a>
+            <a href="#internal-2" class="link internal" data-link-type="internal">رابط داخلي 2</a>
+            <a href="#data-info" class="link internal" data-link-type="anchor">رابط للقسم</a>
+            <a href="https://google.com" target="_blank" class="link external" data-link-type="external">رابط خارجي (Google)</a>
+            <a href="https://github.com" target="_blank" class="link external" data-link-type="external">رابط خارجي (GitHub)</a>
+            <a href="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" class="link download" download="sample.pdf" data-link-type="download">تحميل PDF</a>
+        </div>
+    </section>
+
+    <!-- Form Section -->
+    <section id="contact" class="section form-section">
+        <h2>📝 اختبار النماذج</h2>
+        <form id="contact-form" name="contact-form" class="contact-form" data-form-name="نموذج التواصل">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">الاسم</label>
+                    <input type="text" id="name" name="name" placeholder="أدخل اسمك">
+                </div>
+                <div class="form-group">
+                    <label for="email">البريد الإلكتروني</label>
+                    <input type="email" id="email" name="email" placeholder="أدخل بريدك">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="phone">رقم الهاتف</label>
+                    <input type="tel" id="phone" name="phone" placeholder="أدخل رقم هاتفك">
+                </div>
+                <div class="form-group">
+                    <label for="country">الدولة</label>
+                    <select id="country" name="country">
+                        <option value="">اختر الدولة</option>
+                        <option value="SA">السعودية</option>
+                        <option value="AE">الإمارات</option>
+                        <option value="EG">مصر</option>
+                        <option value="JO">الأردن</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="message">الرسالة</label>
+                <textarea id="message" name="message" rows="4" placeholder="اكتب رسالتك هنا..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="newsletter" id="newsletter">
+                    اشترك في النشرة البريدية
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-submit">إرسال النموذج</button>
+        </form>
+    </section>
+
+    <!-- Video Section -->
+    <section class="section video-section">
+        <h2>🎬 اختبار تتبع الفيديو</h2>
+        <div class="video-container">
+            <video id="demo-video" controls width="100%">
+                <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                متصفحك لا يدعم تشغيل الفيديو
+            </video>
+            <div class="video-stats">
+                <p>حالة الفيديو: <span id="video-status">متوقف</span></p>
+                <p>نسبة المشاهدة: <span id="video-progress">0%</span></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section (E-commerce) -->
+    <section id="products" class="section products-section">
+        <h2>🛒 اختبار تتبع التجارة الإلكترونية</h2>
+        <div class="products-grid">
+            <div class="product-card" data-product-id="prod-001" data-product-name="منتج 1" data-price="99.99" data-category="إلكترونيات">
+                <div class="product-image">📱</div>
+                <h3>منتج إلكتروني 1</h3>
+                <p class="price">99.99 ريال</p>
+                <button class="btn btn-primary add-to-cart">أضف للسلة</button>
+                <button class="btn btn-secondary view-product">عرض التفاصيل</button>
+            </div>
+            <div class="product-card" data-product-id="prod-002" data-product-name="منتج 2" data-price="149.99" data-category="ملابس">
+                <div class="product-image">👕</div>
+                <h3>ملابس عصرية</h3>
+                <p class="price">149.99 ريال</p>
+                <button class="btn btn-primary add-to-cart">أضف للسلة</button>
+                <button class="btn btn-secondary view-product">عرض التفاصيل</button>
+            </div>
+            <div class="product-card" data-product-id="prod-003" data-product-name="منتج 3" data-price="249.99" data-category="كتب">
+                <div class="product-image">📚</div>
+                <h3>كتاب تعليمي</h3>
+                <p class="price">249.99 ريال</p>
+                <button class="btn btn-primary add-to-cart">أضف للسلة</button>
+                <button class="btn btn-secondary view-product">عرض التفاصيل</button>
+            </div>
+        </div>
+        <div class="checkout-section">
+            <h3>🛍️ السلة</h3>
+            <div id="cart-items" class="cart-items">السلة فارغة</div>
+            <button id="checkout-btn" class="btn btn-success">إتمام الشراء</button>
+        </div>
+    </section>
+
+    <!-- Custom Events Section -->
+    <section class="section custom-events-section">
+        <h2>⚡ اختبار الأحداث المخصصة</h2>
+        <div class="custom-events-grid">
+            <button id="track-signup" class="btn btn-primary">تتبع: تسجيل مستخدم</button>
+            <button id="track-search" class="btn btn-secondary">تتبع: بحث</button>
+            <button id="track-share" class="btn btn-info">تتبع: مشاركة</button>
+            <button id="track-error" class="btn btn-danger">تتبع: خطأ</button>
+        </div>
+        <div class="checkout-steps-test" style="margin-top: 20px;">
+            <h4>اختبار خطوات الشراء</h4>
+            <div class="custom-events-grid">
+                <button id="checkout-step-1" class="btn btn-secondary" data-step="1">خطوة 1: السلة</button>
+                <button id="checkout-step-2" class="btn btn-secondary" data-step="2">خطوة 2: الشحن</button>
+                <button id="checkout-step-3" class="btn btn-secondary" data-step="3">خطوة 3: الدفع</button>
+                <button id="checkout-step-4" class="btn btn-success" data-step="4">خطوة 4: تأكيد</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scroll Test Section -->
+    <section class="section scroll-section">
+        <h2>📜 اختبار عمق التمرير</h2>
+        <div class="scroll-content">
+            <p>قم بالتمرير لأسفل لاختبار تتبع عمق التمرير. سيتم تسجيل المعالم التالية:</p>
+            <ul>
+                <li>✓ 25% من الصفحة</li>
+                <li>✓ 50% من الصفحة</li>
+                <li>✓ 75% من الصفحة</li>
+                <li>✓ 100% من الصفحة</li>
+            </ul>
+            <div class="scroll-progress-bar">
+                <div id="scroll-progress-fill" class="progress-fill"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>📊 صفحة اختبار نظام التتبع التحليلي</p>
+            <p>جميع التفاعلات على هذه الصفحة يتم تتبعها وإرسالها للخادم</p>
+            <div class="footer-links">
+                <a href="#top">العودة للأعلى</a>
+                <a href="#data-info">البيانات المجمعة</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Analytics Tracker Script -->
+    <script 
+        src="../tracker/index.js"
+        data-endpoint="http://localhost:8000/api/track"
+        data-tracking-id="trk_TB4ABmsyyoJRpilc"
+        data-batch-size="10"
+        data-interval="5000"
+        data-debug="true">
+    </script>
+
+    <!-- Landing Page Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
