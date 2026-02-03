@@ -1529,103 +1529,149 @@ GROUP BY timestamp, tracking_id;
 
 ---
 
-## س3: كيف يعمل نظام البث الفوري في المشروع؟
+## س3: كيف يعمل نظام البث الفوري والمعالجة الموزعة في المشروع؟
 
-### ملاحظة مهمة: لا يُستخدم Kafka في هذا المشروع
+### البنية المعمارية: Apache Kafka + Distributed System
 
-في التصميم الأولي كان مخططاً استخدام Apache Kafka كطبقة وسيطة، لكن تم الاستغناء عنه لصالح **Laravel Reverb** للأسباب التالية:
+يستخدم المشروع **Apache Kafka** كنظام معالجة أحداث موزع، مع **Spring Boot Cluster** خلف **Nginx Load Balancer** لاستقبال الأحداث. **Laravel** يُستخدم للـ Authentication والـ Dashboard API فقط.
 
-| Kafka | Laravel Reverb |
-|-------|----------------|
-| تعقيد عالي في الإعداد | إعداد سهل جداً |
-| يحتاج Zookeeper | مستقل |
-| مناسب لملايين الأحداث/ثانية | مناسب لآلاف الأحداث/ثانية |
-| يحتاج موارد عالية | موارد منخفضة |
-| تأخر أقل | تأخر منخفض (كافٍ لاحتياجاتنا) |
+### مكونات النظام الموزع
 
-### كيف يعمل Laravel Reverb؟
+| المكون | الوصف |
+|--------|-------|
+| **Nginx Load Balancer** | موازن تحميل يوزع الطلبات على 3 Spring Boot instances |
+| **Spring Boot Cluster** | 3 تطبيقات (app-1, app-2, app-3) للـ API |
+| **Kafka Cluster** | 3 brokers (kafka-1, kafka-2, kafka-3) للمعالجة غير المتزامنة |
+| **Zookeeper** | لإدارة Kafka cluster |
+| **Redis** | Rate limiting + تخزين tracking_ids المسجلة |
+| **ClickHouse** | قاعدة بيانات السلاسل الزمنية |
+| **Laravel** | Authentication + Dashboard API + Reverb (WebSocket) |
 
-**Laravel Reverb** هو WebSocket server مدمج مع Laravel، يوفر:
-- بث الأحداث في الوقت الفعلي
-- دعم القنوات العامة والخاصة
-- تكامل سلس مع Laravel Events
-
-### البنية الحالية
+### تدفق البيانات (Data Collection and Processing Flow)
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                     Real-Time Data Flow                              │
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│               Real-Time Distributed Analytics Data Flow                           │
+└──────────────────────────────────────────────────────────────────────────────────┘
 
-  Website                  Laravel                    ClickHouse
-  + Tracker                  API                       Database
-     │                       │                            │
-     │ HTTP POST /api/track  │                            │
-     │──────────────────────▶│                            │
-     │                       │    INSERT page_events      │
-     │                       │───────────────────────────▶│
-     │                       │                            │
-     │                       │    broadcast(AnalyticsEvent)
-     │                       │─────────────┐              │
-     │                       │             │              │
-     │                       │             ▼              │
-     │                       │      ┌──────────────┐      │
-     │                       │      │ Laravel      │      │
-     │                       │      │ Reverb       │      │
-     │                       │      │ (Port 8080)  │      │
-     │                       │      └──────┬───────┘      │
-     │                       │             │              │
-     │                       │             │ WebSocket    │
-     │                       │             │ Push         │
-     │                       │             │              │
-     │                       │             ▼              │
-     │                       │      ┌──────────────┐      │
-     │                       │      │ React        │      │
-     │                       │      │ Dashboard    │      │
-     │                       │      │ (Real-time)  │      │
-     │                       │      └──────────────┘      │
+  Website                 Nginx LB              Spring Boot           Kafka Cluster
+  + Tracker               (Port 8080)           (3 instances)         (3 brokers)
+     │                       │                       │                      │
+     │ POST /receive_data    │                       │                      │
+     │──────────────────────▶│                       │                      │
+     │                       │ Round Robin           │                      │
+     │                       │──────────────────────▶│                      │
+     │                       │                       │                      │
+     │                       │    1. Rate Limiting (Redis)                  │
+     │                       │    2. Validate Registered tracking_id        │
+     │                       │    3. Normalize event format                 │
+     │                       │                       │                      │
+     │                       │                       │ Kafka Producer       │
+     │                       │                       │─────────────────────▶│
+     │                       │                       │                      │
+     │                       │                       │                      ▼
+     │                       │                       │              ┌──────────────┐
+     │                       │                       │              │ Kafka Topics │
+     │                       │                       │              │ - page_load  │
+     │                       │                       │              │ - page_view  │
+     │                       │                       │              │ - scroll_*   │
+     │                       │                       │              │ - video_*    │
+     │                       │                       │              │ - ecommerce_*│
+     │                       │                       │              └──────┬───────┘
+     │                       │                       │                     │
+     │                       │                       │  Kafka Consumer     │
+     │                       │                       │◀────────────────────┘
+     │                       │                       │
+     │                       │                       │   INSERT INTO
+     │                       │                       │   ClickHouse
+     │                       │                       │─────────────────────▶ ClickHouse
+     │                       │                       │                       (Raw + MVs)
 ```
 
-### تكوين Laravel Reverb
+### التحقق من Registered Tracking ID
 
-```php
-// config/reverb.php
-return [
-    'default' => 'reverb',
-    'servers' => [
-        'reverb' => [
-            'host' => env('REVERB_HOST', '0.0.0.0'),
-            'port' => env('REVERB_PORT', 8080),
-            'hostname' => env('REVERB_HOST', 'localhost'),
-            'options' => [
-                'tls' => [],
-            ],
-        ],
-    ],
-];
+وفقاً للتوثيق (قسم 3.3.1)، يتم التحقق من أن `tracking_id` مسجّل قبل معالجة الأحداث:
+
+```
+1. User registers in Laravel → tracking_id stored in MySQL
+2. Laravel Observer → syncs tracking_id to Redis (via /api/tracking-ids/register)
+3. Spring Boot → validates tracking_id from Redis before publishing to Kafka
+4. Invalid tracking_id → HTTP 403 response
 ```
 
-### تشغيل WebSocket Server
+### Kafka Topics
+
+| Topic | Events |
+|-------|--------|
+| `page_load`, `page_view`, `page_unload`, `page_hidden`, `page_visible` | Page events + Session creation |
+| `mouse_click`, `button_click`, `link_click`, `file_download` | Interaction events |
+| `form_submit`, `form_focus`, `form_input` | Form events |
+| `scroll_depth` | Scroll events |
+| `mouse_move` | Mouse movement events |
+| `video_events` | Video play/pause/complete/progress events |
+| `product_view`, `cart_add`, `cart_remove`, `checkout_step`, `purchase` | E-commerce events |
+| `periodic_events` | Batched events (unpacked by consumer) |
+
+### تكوين Docker Compose
+
+جميع الخدمات معرّفة في `docker-compose.yml` بالمسار الجذري:
+
+```yaml
+services:
+  # ClickHouse
+  clickhouse: ...
+  
+  # Redis for rate limiting and tracking_id cache
+  redis: ...
+  
+  # Zookeeper
+  zookeeper: ...
+  
+  # Kafka Cluster (3 brokers)
+  kafka-1: ...
+  kafka-2: ...
+  kafka-3: ...
+  
+  # Spring Boot API Cluster (3 instances)
+  app-1: ...
+  app-2: ...
+  app-3: ...
+  
+  # Nginx Load Balancer
+  nginx-lb: ...
+```
+
+### تشغيل النظام الموزع
 
 ```bash
-# في terminal منفصل
-php artisan reverb:start
+# تشغيل جميع الخدمات
+docker-compose up -d
 
-# Output:
-# Starting server on 0.0.0.0:8080...
+# مراقبة logs
+docker-compose logs -f
+
+# التحقق من صحة الخدمات
+curl http://localhost:8080/health
 ```
 
-### متى يمكن استخدام Kafka؟
+### مزامنة Tracking IDs من Laravel
 
-في حالات التوسع الكبير (مليون+ حدث/دقيقة)، يمكن إضافة Kafka كالتالي:
+```bash
+# مزامنة جميع tracking_ids إلى Kafka backend Redis
+php artisan tracking:sync
 
+# أو مع dry-run للمعاينة
+php artisan tracking:sync --dry-run
 ```
-Website ──▶ API ──▶ Kafka ──▶ Consumer ──▶ ClickHouse
-                       │
-                       └──▶ Real-time Consumer ──▶ WebSocket
-```
 
-لكن للمواقع الصغيرة والمتوسطة، Laravel Reverb كافٍ تماماً.
+### Laravel Reverb للـ Real-time Dashboard
+
+**Laravel Reverb** يُستخدم لعرض التحديثات الفورية في لوحة التحكم:
+
+```php
+// عند وصول حدث جديد، يمكن إرسال broadcast
+broadcast(new AnalyticsEvent($trackingId, $eventType, $data))->toOthers();
+```
 
 ---
 
@@ -1635,42 +1681,83 @@ Website ──▶ API ──▶ Kafka ──▶ Consumer ──▶ ClickHouse
 
 | المكون | الحالة | الوصف |
 |--------|--------|-------|
-| Backend (Laravel) | ✅ مكتمل | API + Authentication + WebSocket |
+| **Kafka Cluster** | ✅ مكتمل | 3 brokers للمعالجة الموزعة غير المتزامنة |
+| **Spring Boot Cluster** | ✅ مكتمل | 3 instances خلف Nginx Load Balancer |
+| **Nginx Load Balancer** | ✅ مكتمل | توزيع الحمل على Spring Boot instances |
+| **Redis** | ✅ مكتمل | Rate Limiting + Tracking ID validation cache |
+| Backend (Laravel) | ✅ مكتمل | API + Authentication + WebSocket (Reverb) |
 | Frontend (React) | ✅ مكتمل | Dashboard + Charts + Real-time |
 | Tracker (JavaScript) | ✅ مكتمل | Event collection + Batch sending |
-| ClickHouse Schema | ✅ مكتمل | 22 جدول + 22 Materialized View |
+| ClickHouse Schema | ✅ مكتمل | 8 جداول + 22 Materialized View |
 | MySQL Schema | ✅ مكتمل | Users + Roles + Sessions |
 | Documentation | ✅ مكتمل | API.md + README + هذه الوثيقة |
+| **Kafka Consumers** | ✅ مكتمل | Sessions, Video, Scroll, Mouse, Periodic events |
+| **Tracking ID Validation** | ✅ مكتمل | تحقق من tracking_id مسجّل قبل المعالجة |
 
 ## المنافذ المستخدمة
 
 | الخدمة | المنفذ |
 |--------|--------|
+| **Nginx Load Balancer** | 8080 (Entry point للـ Tracker) |
+| **Spring Boot app-1** | 8081 |
+| **Spring Boot app-2** | 8082 |
+| **Spring Boot app-3** | 8083 |
+| **Kafka broker-1** | 9092 |
+| **Kafka broker-2** | 9093 |
+| **Kafka broker-3** | 9094 |
+| **Zookeeper** | 2181 |
+| **Redis** | 6379 |
+| **ClickHouse HTTP** | 8123 |
+| **ClickHouse Native** | 9000 |
 | Laravel API | 8000 |
-| Laravel Reverb | 8080 |
-| ClickHouse HTTP | 8123 |
+| Laravel Reverb | 6001 (أو 8080 إن لم يُستخدم Kafka) |
 | MySQL | 3306 |
 | Frontend (Vite) | 5173 |
 
 ## أوامر التشغيل
 
 ```bash
-# 1. ClickHouse
-cd database && docker-compose up -d
+# 1. تشغيل النظام الموزع بالكامل (Kafka + ClickHouse + Spring Boot)
+docker-compose up -d
 
-# 2. Backend
+# 2. انتظار حتى تصبح الخدمات جاهزة
+docker-compose logs -f
+
+# 3. Laravel Backend (في terminal منفصل)
 cd BackEnd
 php artisan migrate --force
 php artisan db:seed
 php artisan serve
 
-# 3. WebSocket (terminal جديد)
+# 4. مزامنة Tracking IDs من Laravel إلى Kafka Redis
+php artisan tracking:sync
+
+# 5. WebSocket (terminal جديد - اختياري للـ real-time dashboard)
 cd BackEnd
 php artisan reverb:start
 
-# 4. Frontend (terminal جديد)
+# 6. Frontend (terminal جديد)
 cd frontend/react-analytics-dashboard-updated/react-analytics-dashboard
 npm run dev
+```
+
+### أوامر مفيدة
+
+```bash
+# إيقاف جميع الخدمات
+docker-compose down
+
+# إعادة بناء الـ images
+docker-compose build --no-cache
+
+# عرض حالة الخدمات
+docker-compose ps
+
+# عرض logs لخدمة معينة
+docker-compose logs -f app-1
+
+# التحقق من صحة Kafka
+curl http://localhost:8080/health
 ```
 
 ---

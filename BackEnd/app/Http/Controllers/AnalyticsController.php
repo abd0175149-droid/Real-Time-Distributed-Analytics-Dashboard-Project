@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\ClickHouseTestService;
 use App\Events\AnalyticsEvent;
+use App\Models\User;
 
 class AnalyticsController extends Controller
 {
@@ -15,6 +17,25 @@ class AnalyticsController extends Controller
     public function __construct(ClickHouseTestService $clickhouse)
     {
         $this->clickhouse = $clickhouse;
+    }
+
+    /**
+     * Validate that a tracking ID is registered in the system.
+     * Uses cache to avoid hitting the database on every request.
+     */
+    protected function isRegisteredTrackingId(string $trackingId): bool
+    {
+        // Check if validation is disabled via config
+        if (!config('analytics.validate_tracking_id', true)) {
+            return true;
+        }
+
+        // Use cache to store valid tracking IDs (TTL: 5 minutes)
+        $cacheKey = "tracking_id:valid:{$trackingId}";
+        
+        return Cache::remember($cacheKey, 300, function () use ($trackingId) {
+            return User::where('tracking_id', $trackingId)->exists();
+        });
     }
 
     /**
@@ -32,6 +53,17 @@ class AnalyticsController extends Controller
         // Get event type from either 'type' or 'event_type' field
         $eventType = $request->input("type") ?? $request->input("event_type") ?? "unknown";
         $trackingId = $request->input("tracking_id");
+
+        // Validate that the tracking_id is registered (per documentation 3.3.1)
+        if (!$this->isRegisteredTrackingId($trackingId)) {
+            Log::warning("Unregistered tracking_id attempted: {$trackingId}");
+            return response()->json([
+                "status" => "error",
+                "message" => "Invalid or unregistered tracking ID",
+                "tracking_id" => $trackingId,
+            ], 403);
+        }
+
         $sessionId = $request->input("session_id") ?? ("sess_" . uniqid());
         $userId = Auth::check() ? Auth::id() : ($request->input("user_id") ?? "guest");
 

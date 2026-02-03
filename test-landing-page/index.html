@@ -305,14 +305,15 @@
     </footer>
 
     <!-- Analytics Tracker Script -->
-    <script 
-        src="../tracker/index.js"
-        data-endpoint="http://localhost:8000/api/track"
-        data-tracking-id="trk_TB4ABmsyyoJRpilc"
-        data-batch-size="10"
-        data-interval="5000"
-        data-debug="true">
-    </script>
+<!-- DataFlow Analytics Tracker - يرسل إلى Kafka Backend -->
+<script 
+    src="../tracker/index.js"
+    data-endpoint="http://localhost:8080/receive_data"
+    data-tracking-id="trk_uZoivsqcP8vGWcqW"
+    data-batch-size="10"
+    data-interval="5000"
+    data-debug="true">
+</script>
 
     <!-- Landing Page Scripts -->
     <script src="app.js"></script>
